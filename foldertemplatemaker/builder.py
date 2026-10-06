@@ -79,9 +79,12 @@ def make_plan(template: Template, title: str, *, today: Optional[date] = None) -
     title = clean_name(title)
     plan = Plan()
 
-    problem = name_problem(title)
-    if problem:
-        plan.problems.append("The name for the new folder: " + problem)
+    if not title:
+        plan.problems.append("Type a name for the new folder.")
+    else:
+        problem = name_problem(title)
+        if problem:
+            plan.problems.append('The folder name "%s" can\'t be used. %s' % (title, problem))
 
     def visit(folder: Folder, parts: Tuple[str, ...], trail: List[str], on_disk_name: str) -> None:
         plan.items.append(PlanItem("dir", parts))
@@ -90,7 +93,8 @@ def make_plan(template: Template, title: str, *, today: Optional[date] = None) -
         for child in folder.folders:
             problem = name_problem(child.name)
             if problem:
-                plan.problems.append('Folder "%s" inside %s: %s' % (child.name, _where(trail), problem))
+                plan.problems.append('The folder "%s" inside %s can\'t be used. %s'
+                                     % (child.name, _where(trail), problem))
                 continue
             key = sibling_key(child.name)
             if key in taken:
@@ -110,7 +114,8 @@ def make_plan(template: Template, title: str, *, today: Optional[date] = None) -
             problem = extension_problem(doc.ext) or name_problem(filename)
             if problem:
                 plan.problems.append(
-                    'Document "%s" inside %s: %s' % (doc.file_pattern, _where(trail), problem))
+                    'The document "%s" inside %s can\'t be used. %s'
+                    % (doc.file_pattern, _where(trail), problem))
                 continue
             key = sibling_key(filename)
             if key in taken:

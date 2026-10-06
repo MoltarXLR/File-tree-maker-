@@ -38,34 +38,39 @@ def clean_name(name: str) -> str:
 
 
 def name_problem(name: str) -> Optional[str]:
-    """Return a plain-English reason ``name`` can't be a folder/file name, or None."""
+    """Return a plain-English reason ``name`` can't be a folder/file name, or None.
+
+    The sentences are written to stand on their own, so callers can put the
+    name they are talking about in front of them.
+    """
     if not name or not name.strip():
-        return "The name can't be empty."
+        return "Names can't be empty."
 
     bad = []
     for ch in name:
         if (ch in INVALID_CHARS or ord(ch) < 32) and ch not in bad:
             bad.append(ch)
     if bad:
-        shown = "  ".join(("(tab/line break)" if ord(c) < 32 else c) for c in bad)
-        return "The name can't contain: %s" % shown
+        shown = " ".join(("(tab or line break)" if ord(c) < 32 else c) for c in bad)
+        return ("Names can't contain any of these characters:  \\ / : * ? \" < > |   "
+                "(this name has: %s)" % shown)
 
     if name != name.strip():
-        return "The name can't start or end with a space."
+        return "Names can't start or end with a space."
     if name.endswith("."):
-        return "The name can't end with a period."
+        return "Names can't end with a period."
 
     base = name.split(".", 1)[0].rstrip(" ").upper()
     if base in _RESERVED_BASENAMES:
-        return '"%s" is a reserved Windows name and can\'t be used.' % base
+        return '"%s" is a reserved Windows name and can\'t be used for a folder or file.' % base
 
     lowered = name.lower()
     if lowered in _ONEDRIVE_FORBIDDEN_NAMES or name.startswith("~$") or "_vti_" in lowered:
-        return '"%s" isn\'t allowed by Windows/OneDrive.' % name
+        return "That name isn't allowed by Windows/OneDrive."
 
     if len(name) > MAX_NAME_LENGTH:
-        return "The name is too long (%d characters; the limit is %d)." % (
-            len(name), MAX_NAME_LENGTH)
+        return "Names can be at most %d characters long (this one is %d)." % (
+            MAX_NAME_LENGTH, len(name))
     return None
 
 

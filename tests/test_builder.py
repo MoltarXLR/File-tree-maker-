@@ -1,5 +1,4 @@
 import errno
-import ntpath
 import os
 import tempfile
 import unittest

@@ -374,11 +374,14 @@ class FolderFromDiskTests(unittest.TestCase):
 
     def test_skips_unusable_names(self):
         self.mk("Deal", "ok")
-        self.mk("Deal", "bad:name")
         self.mk("Deal", "$RECYCLE.BIN")
+        expected_skipped = ["$RECYCLE.BIN"]
+        if os.name != "nt":                      # Windows can't even create a folder called this
+            self.mk("Deal", "bad:name")
+            expected_skipped.append("bad:name")
         root, report = model.folder_from_disk(os.path.join(self.base, "Deal"))
         self.assertEqual(names_of(root.folders), ["ok"])
-        self.assertCountEqual(report.skipped, ["bad:name", "$RECYCLE.BIN"])
+        self.assertCountEqual(report.skipped, expected_skipped)
 
     def test_limits(self):
         for i in range(10):

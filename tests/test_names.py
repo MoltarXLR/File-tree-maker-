@@ -20,7 +20,8 @@ class NameProblemTests(unittest.TestCase):
         for ch in '<>:"/\\|?*':
             problem = names.name_problem("a%sb" % ch)
             self.assertIsNotNone(problem, ch)
-            self.assertIn(ch, problem)
+            self.assertTrue(problem.endswith("(this name has: %s)" % ch), problem)
+        self.assertTrue(names.name_problem("a:b/c").endswith("(this name has: : /)"))
         self.assertIsNotNone(names.name_problem("tab\there"))
         self.assertIsNotNone(names.name_problem("line\nbreak"))
 
@@ -41,7 +42,7 @@ class NameProblemTests(unittest.TestCase):
             self.assertIn("OneDrive", names.name_problem(name) or "", name)
 
     def test_too_long(self):
-        self.assertIn("too long", names.name_problem("a" * 256))
+        self.assertIn("at most 255", names.name_problem("a" * 256))
 
 
 class CleanAndSanitizeTests(unittest.TestCase):

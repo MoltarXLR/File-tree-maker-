@@ -317,7 +317,7 @@ def doc_problem(doc: DocSpec, template_name: str = "Template") -> Optional[str]:
     final = resolve(doc.name, sample, for_filename=True).strip() + doc.ext
     problem = name_problem(final)
     if problem:
-        return "That document name won't work: " + problem[0].lower() + problem[1:]
+        return "That document name can't be used. " + problem
     return None
 
 
@@ -389,6 +389,15 @@ def parse_outline(text: str) -> Tuple[List[Folder], List[str]]:
         siblings.append(folder)
         stack.append((indent_width, folder))
     return top, problems
+
+
+def add_outline(parent: Folder, folders: List[Folder]) -> None:
+    """Add folders made by :func:`parse_outline` under ``parent`` (all or nothing)."""
+    existing = {sibling_key(f.name): f.name for f in parent.folders}
+    clashes = [f.name for f in folders if sibling_key(f.name) in existing]
+    if clashes:
+        raise TemplateError('"%s" already contains: %s' % (parent.name, ", ".join(clashes)))
+    parent.folders.extend(folders)
 
 
 # --------------------------------------------------------------------------- #
