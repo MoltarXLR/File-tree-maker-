@@ -1,0 +1,21 @@
+name: Windows screenshots (developer tool)
+
+# Starts the real program on a Windows machine, takes pictures of its window and prints them into the
+# log (as base64) so the way it looks on Windows can be checked.  Run it by hand from the Actions tab.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  screenshots:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - run: python -m pip install pillow
+      - name: Take screenshots of the real window
+        run: python .github/scripts/windows_screenshots.py
