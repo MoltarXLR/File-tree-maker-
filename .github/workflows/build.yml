@@ -69,6 +69,26 @@ jobs:
           if-no-files-found: error
           retention-days: 90
 
+  bat:
+    name: Check build_exe.bat (the double-click build)
+    needs: test
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - name: Run build_exe.bat exactly as a person would
+        shell: cmd
+        run: build_exe.bat
+      - name: Check that the exe it made works
+        shell: pwsh
+        run: |
+          $report = Join-Path $env:RUNNER_TEMP "selftest-bat.txt"
+          $process = Start-Process -FilePath "dist\FolderTemplateMaker.exe" -ArgumentList "--selftest", $report -Wait -PassThru
+          if (Test-Path $report) { Get-Content $report }
+          if ($process.ExitCode -ne 0) { throw "The exe built by build_exe.bat failed its self-test." }
+
   release:
     name: Publish a GitHub Release
     needs: build

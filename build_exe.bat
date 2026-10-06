@@ -8,7 +8,7 @@ set "PY=py -3"
 %PY% --version >nul 2>&1 || set "PY=python"
 %PY% --version >nul 2>&1 || (
     echo Python was not found. Install it from https://www.python.org/downloads/ first.
-    pause
+    if not defined CI pause
     exit /b 1
 )
 
@@ -17,11 +17,11 @@ set "PY=py -3"
 
 echo.
 echo All done - your program is dist\FolderTemplateMaker.exe
-pause
+if not defined CI pause
 exit /b 0
 
 :failed
 echo.
 echo Something went wrong - see the messages above.
-pause
+if not defined CI pause
 exit /b 1
