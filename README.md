@@ -168,7 +168,10 @@ python packaging/build_exe.py                       # builds dist/FolderTemplate
 ```
 
 GUI tests are skipped automatically when there is no display. `FOLDER_TEMPLATE_MAKER_HOME` points the
-program at a different data folder, which the tests use.
+program at a different data folder, which the tests use. A watchdog ends a stalled test run after 5 minutes
+and prints where it was stuck (`FTM_TEST_TIMEOUT=<seconds>` changes that, `0` turns it off). The layout
+tests check the real window for cut-off text and overlapping widgets, so they also guard against layout
+regressions on Windows' native theme.
 
 **Continuous integration** (`.github/workflows/build.yml`): every push runs the whole test suite on Windows,
 builds `FolderTemplateMaker.exe`, starts that exe in `--selftest` mode to prove it works, and uploads it as an
