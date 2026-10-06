@@ -22,6 +22,7 @@ if HAVE_TK:
     from foldertemplatemaker import model
     from foldertemplatemaker.gui import App
     from foldertemplatemaker.storage import Store
+    from tests.layout_lint import layout_problems
 
 
 class FakeDocumentDialog:
@@ -572,6 +573,116 @@ class DocumentDialogTests(GuiCase):
         self.assertTrue(dialog.winfo_exists())
         dialog.name_var.set("something else")                       # editing clears the old error
         self.assertEqual(dialog.error_var.get(), "")
+
+
+class LayoutTests(GuiCase):
+    """Nothing cut off, nothing drawn over anything else - at the default size, at the smallest
+    size the window allows, and with long names and paths."""
+
+    def assertClean(self, window, where):
+        problems = layout_problems(window)
+        self.assertEqual(problems, [], "%s:\n  %s" % (where, "\n  ".join(problems)))
+
+    def test_main_window_at_its_default_size(self):
+        self.assertClean(self.app, "default size")
+
+    def test_main_window_at_its_smallest_size(self):
+        width, height = self.app.minsize()
+        self.app.geometry("%dx%d" % (width, height))
+        self.pump()
+        self.assertClean(self.app, "smallest size %dx%d" % (width, height))
+
+    def test_smallest_size_fits_a_laptop_screen(self):
+        width, height = self.app.minsize()
+        self.assertLessEqual(width, self.app.winfo_screenwidth())
+        self.assertLessEqual(height, self.app.winfo_screenheight())
+
+    def test_after_creating_with_a_long_path_and_name(self):
+        long_dir = os.path.join(self.tmp.name, "A very long folder name " * 3, "and another one " * 2)
+        os.makedirs(long_dir)
+        self.app.dest_var.set(long_dir)
+        self.app.name_var.set("A rather long name for the new folder " * 2)
+        self.app._update_preview()
+        self.assertClean(self.app, "long path preview")
+        self.app.create()
+        self.assertClean(self.app, "after creating")
+        self.app.name_var.set("a/b")
+        self.app._update_preview()
+        self.assertClean(self.app, "error line")
+
+    def test_while_renaming_and_with_a_full_tree(self):
+        for i in range(30):
+            model.add_folder(self.root, "Folder number %d with a longer name" % i)
+        self.editor.refresh()
+        self.editor.select(self.folder("Correspondence"))
+        self.editor.rename_selected()
+        self.assertClean(self.app, "inline editing with a long tree")
+        self.editor._abort_edit()
+
+    def test_the_empty_window(self):
+        self.confirm_answer = True
+        self.app.delete_template()
+        self.assertClean(self.app, "no templates")
+
+    def test_dialogs(self):
+        from foldertemplatemaker.dialogs import DocumentDialog, OutlineDialog, TextDialog
+        document = DocumentDialog(
+            self.app, title="Edit document", folder_name="Work product", name="{title} raw data",
+            ext=".txt", content="line\n" * 12, preview=lambda n, e: n + e, apply=lambda *a: None,
+            modal=False)
+        outline = OutlineDialog(self.app, parent_name="Diligence folder", apply=lambda t: None,
+                                modal=False)
+        outline.text.insert("1.0", OutlineDialog.EXAMPLE)
+        text = TextDialog(self.app, "Help", "# A heading\nSome text\n" * 30, modal=False)
+        for name, dialog in (("document dialog", document), ("add-several dialog", outline),
+                             ("help dialog", text)):
+            self.addCleanup(lambda d=dialog: d.winfo_exists() and d.destroy())
+            dialog.present()
+            self.pump()
+            self.assertClean(dialog, name)
+            self.assertLessEqual(dialog.winfo_reqheight(), self.app.winfo_screenheight(), name)
+        document.hint_var.set("Heads up: {titel} isn't a placeholder, so it will be written exactly as typed.")
+        document.error_var.set("The name can't contain: a long explanation. " * 3)
+        self.assertClean(document, "document dialog with messages")
+
+
+@unittest.skipUnless(HAVE_TK, "needs tkinter and a display")
+class LayoutLintSelfTests(unittest.TestCase):
+    """The layout checker itself must be able to fail, or the layout tests prove nothing."""
+
+    def window(self):
+        from tkinter import ttk
+        root = tk.Tk()
+        self.addCleanup(root.destroy)
+        frame = ttk.Frame(root)
+        frame.pack(fill="both", expand=True)
+        return root, frame, ttk
+
+    def test_it_notices_overlap_and_cut_off_text(self):
+        root, frame, ttk = self.window()
+        wide = ttk.Label(frame, text="A label with quite a lot of text in it")
+        wide.grid(row=0, column=0, columnspan=2)
+        ttk.Button(frame, text="On top").grid(row=0, column=1)      # shares cells with the label
+        root.geometry("110x40")
+        problems = layout_problems(root)
+        self.assertTrue(any("overlaps" in p for p in problems), problems)
+        self.assertTrue(any("cut off" in p or "squeezed" in p for p in problems), problems)
+
+    def test_it_notices_a_widget_sticking_out_of_the_window(self):
+        root, frame, ttk = self.window()
+        ttk.Button(frame, text="Wide button", width=40).pack()
+        root.geometry("80x60")
+        problems = layout_problems(root)
+        self.assertTrue(any("cut off" in p or "squeezed" in p for p in problems), problems)
+
+    def test_it_stays_quiet_about_a_sound_layout(self):
+        root, frame, ttk = self.window()
+        ttk.Label(frame, text="Name").grid(row=0, column=0)
+        ttk.Entry(frame).grid(row=0, column=1, sticky="we")
+        ttk.Button(frame, text="OK").grid(row=0, column=2)
+        frame.columnconfigure(1, weight=1)
+        root.geometry("420x80")
+        self.assertEqual(layout_problems(root), [])
 
 
 class DragAndDropTests(GuiCase):
