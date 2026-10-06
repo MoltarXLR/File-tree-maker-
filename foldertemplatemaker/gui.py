@@ -101,6 +101,7 @@ class App(tk.Tk):
         self._load_template(first)
         self.deiconify()
         self.update_idletasks()
+        self._update_wraps()
         if self.current is not None:           # ready to type the new folder's name and press Enter
             self.name_entry.focus_set()
             self.name_entry.selection_range(0, "end")
@@ -313,13 +314,14 @@ class App(tk.Tk):
         panel.columnconfigure(1, weight=1)
         pad = self.px(8)
 
-        ttk.Label(panel, text="Create it in").grid(row=0, column=0, sticky="w")
+        self.dest_label = ttk.Label(panel, text="Create it in")
+        self.dest_label.grid(row=0, column=0, sticky="w")
         self.dest_var = tk.StringVar()
         self.dest_box = ttk.Combobox(panel, textvariable=self.dest_var,
                                      values=self.store.settings.recent_destinations)
         self.dest_box.grid(row=0, column=1, sticky="we", padx=pad)
-        browse = ttk.Button(panel, text="Browse…", command=self.browse)
-        browse.grid(row=0, column=2, sticky="we")
+        self.browse_button = ttk.Button(panel, text="Browse…", command=self.browse)
+        self.browse_button.grid(row=0, column=2, sticky="we")
         self.places_button = ttk.Menubutton(panel, text="Quick places ▾")
         self.places_menu = tk.Menu(self.places_button, tearoff=False,
                                    postcommand=self._fill_places_menu)
@@ -327,8 +329,8 @@ class App(tk.Tk):
         self.places_button.grid(row=0, column=3, sticky="we", padx=(self.px(6), 0))
         Tooltip(self.places_button, "Jump to OneDrive, Documents, Desktop or a recent location")
 
-        ttk.Label(panel, text="Name the new folder").grid(row=1, column=0, sticky="w",
-                                                          pady=(self.px(8), 0))
+        self.name_label = ttk.Label(panel, text="Name the new folder")
+        self.name_label.grid(row=1, column=0, sticky="w", pady=(self.px(8), 0))
         self.name_var = tk.StringVar()
         self.name_entry = ttk.Entry(panel, textvariable=self.name_var)
         self.name_entry.grid(row=1, column=1, sticky="we", padx=pad, pady=(self.px(8), 0))
@@ -337,8 +339,6 @@ class App(tk.Tk):
         self.info_var = tk.StringVar()
         self.info_label = ttk.Label(panel, textvariable=self.info_var, justify="left")
         self.info_label.grid(row=2, column=1, sticky="w", padx=pad, pady=(self.px(6), 0))
-        self.name_entry.bind("<Configure>", lambda e: self.info_label.configure(
-            wraplength=max(self.px(200), e.width)), add="+")
 
         self.open_after_var = tk.BooleanVar(value=self.store.settings.open_after_create)
         ttk.Checkbutton(panel, text="Open the new folder when it has been created",
@@ -357,15 +357,33 @@ class App(tk.Tk):
         self.result_label = ttk.Label(panel, textvariable=self.result_var, justify="left",
                                       font=self.bold)
         self.result_label.grid(row=4, column=1, sticky="w", padx=pad, pady=(self.px(8), 0))
-        self.name_entry.bind("<Configure>", lambda e: self.result_label.configure(
-            wraplength=max(self.px(200), e.width)), add="+")
         self.open_button = ttk.Button(panel, text="Open folder", command=self.open_result)
         self.open_button.grid(row=4, column=2, columnspan=2, sticky="e", pady=(self.px(8), 0))
         self.open_button.grid_remove()
 
+        self.bind("<Configure>", self._update_wraps, add="+")
         self.dest_var.trace_add("write", lambda *_: self._on_destination_typed())
         self.name_var.trace_add("write", lambda *_: self._on_name_typed())
         self.open_after_var.trace_add("write", lambda *_: self._remember_open_after())
+
+    def _update_wraps(self, event: Optional[tk.Event] = None) -> None:
+        """Wrap the two message lines to the room the entry column has.
+
+        Worked out from the *window* width and from widgets that never wrap - never from the
+        width of the wrapped labels themselves - so it can't feed back into itself.
+        """
+        if event is not None and event.widget is not self:
+            return
+        try:
+            left = max(self.dest_label.winfo_reqwidth(), self.name_label.winfo_reqwidth())
+            right = self.browse_button.winfo_reqwidth() + self.places_button.winfo_reqwidth()
+            spare = self.winfo_width() - left - right - self.px(110)
+        except tk.TclError:
+            return
+        wrap = max(self.px(220), spare)
+        for label in (self.info_label, self.result_label):
+            if int(float(str(label.cget("wraplength")) or 0)) != wrap:
+                label.configure(wraplength=wrap)
 
     # ------------------------------------------------------------------ #
     # Template list and loading

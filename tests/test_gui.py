@@ -4,6 +4,7 @@ on Linux run them under ``xvfb-run``) and are skipped when there isn't one."""
 import os
 import shutil
 import tempfile
+import traceback
 import types
 import unittest
 from unittest import mock
@@ -66,6 +67,10 @@ class GuiCase(unittest.TestCase):
 
         self.app = App(self.store)
         self.addCleanup(self._destroy)
+        self.callback_errors = []
+        self.app.report_callback_exception = lambda kind, error, tb: self.callback_errors.append(
+            "".join(traceback.format_exception(kind, error, tb)))   # the real one opens a modal box
+        self.addCleanup(self._no_callback_errors)
         self.errors, self.infos, self.confirms = [], [], []
         self.confirm_answer = True
         self.save_choice = "cancel"
@@ -81,6 +86,9 @@ class GuiCase(unittest.TestCase):
             self.app.destroy()
         except tk.TclError:
             pass
+
+    def _no_callback_errors(self):
+        self.assertEqual(self.callback_errors, [], "an error happened inside a window callback")
 
     def _confirm(self, title, message, default_no=True):
         self.confirms.append((title, message))
