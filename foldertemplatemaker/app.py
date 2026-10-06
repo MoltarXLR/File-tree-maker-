@@ -61,6 +61,9 @@ def run_selftest(report_path: str) -> int:
             app.confirm = lambda *args, **kwargs: True  # type: ignore
             app.update()
             lines.append("window opened: %s" % app.title())
+            lines.append("window icon: %s" % ("loaded" if app.icon_loaded else "NOT loaded"))
+            if not app.icon_loaded:
+                problems.append("the window icon did not load")
             lines.append("templates: %s" % [t.name for t in store.templates])
 
             app.dest_var.set(destination)

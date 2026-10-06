@@ -130,6 +130,9 @@ class StartupTests(GuiCase):
         self.assertEqual(app.title(), "Folder Template Maker")
         self.assertEqual(app.open_button.winfo_manager(), "")
 
+    def test_the_window_icon_loads(self):
+        self.assertTrue(self.app.icon_loaded)
+
     def test_the_selftest_used_by_the_build_passes(self):
         with tempfile.TemporaryDirectory() as tmp, mock.patch.dict(os.environ):
             report = os.path.join(tmp, "report.txt")

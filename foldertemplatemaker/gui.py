@@ -86,6 +86,7 @@ class App(tk.Tk):
         self.title(APP_NAME)
         self.report_callback_exception = self._report_exception
         self._setup_style()
+        self._set_window_icon()
         self._build_menu()
         self._build_widgets()
         self._restore_geometry()
@@ -175,6 +176,18 @@ class App(tk.Tk):
         style.configure("Hint.TLabel", foreground=HINT_FG)
         style.configure("TLabelframe.Label", font=self.bold)
         self.icons = Icons(self, self.px(16))
+
+    def _set_window_icon(self) -> None:
+        """The folder-with-a-plus picture in the title bar and taskbar."""
+        self.icon_loaded = False
+        try:
+            from . import appicon
+            self._icon_images = [tk.PhotoImage(master=self, data=appicon.PNG_64),
+                                 tk.PhotoImage(master=self, data=appicon.PNG_32)]
+            self.iconphoto(True, *self._icon_images)
+            self.icon_loaded = True
+        except Exception:                                # purely cosmetic: never stop the program
+            pass
 
     def _build_menu(self) -> None:
         bar = tk.Menu(self)

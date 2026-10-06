@@ -1,16 +1,31 @@
 name: Test and build
 
+# Every push is tested on Windows and built into FolderTemplateMaker.exe
+# (find it under Actions > the run > Artifacts).
+# To publish it as a Release - a normal download page - either push a tag such as v1.0.0,
+# or use "Run workflow" below and tick "publish_release".
 on:
   push:
+    branches: ["**"]
+    tags: ["v*"]
   pull_request:
   workflow_dispatch:
+    inputs:
+      publish_release:
+        description: "Also publish the program as a GitHub Release (a public download page)"
+        type: boolean
+        default: false
 
 permissions:
   contents: read
 
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   test:
-    name: Unit tests (Windows)
+    name: Tests (Windows)
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v5
@@ -19,3 +34,66 @@ jobs:
           python-version: "3.12"
       - name: Run the tests
         run: python -m unittest discover -s tests -t . -v
+
+  build:
+    name: Build FolderTemplateMaker.exe
+    needs: test
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - name: Install PyInstaller
+        run: python -m pip install --upgrade pip pyinstaller
+      - name: Build the program
+        run: python packaging/build_exe.py
+      - name: Check that the built program really starts and works
+        shell: pwsh
+        run: |
+          $report = Join-Path $env:RUNNER_TEMP "selftest.txt"
+          $process = Start-Process -FilePath "dist\FolderTemplateMaker.exe" -ArgumentList "--selftest", $report -Wait -PassThru
+          if (Test-Path $report) { Get-Content $report } else { Write-Host "No self-test report was written." }
+          if ($process.ExitCode -ne 0) { throw "The built program failed its self-test (exit code $($process.ExitCode))." }
+      - name: Describe the build
+        shell: pwsh
+        run: |
+          $exe = Get-Item "dist\FolderTemplateMaker.exe"
+          $hash = (Get-FileHash $exe.FullName -Algorithm SHA256).Hash
+          $size = [math]::Round($exe.Length / 1MB, 1)
+          "### FolderTemplateMaker.exe`n`n- Size: $size MB`n- SHA-256: ``$hash``" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8
+      - uses: actions/upload-artifact@v5
+        with:
+          name: FolderTemplateMaker-windows
+          path: dist/FolderTemplateMaker.exe
+          if-no-files-found: error
+          retention-days: 90
+
+  release:
+    name: Publish a GitHub Release
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.publish_release)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/download-artifact@v5
+        with:
+          name: FolderTemplateMaker-windows
+          path: dist
+      - name: Create (or update) the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          VERSION=$(grep -oP '__version__ = "\K[^"]+' foldertemplatemaker/__init__.py)
+          if [ "$GITHUB_REF_TYPE" = "tag" ]; then TAG="$GITHUB_REF_NAME"; else TAG="v$VERSION"; fi
+          NOTES="Download **FolderTemplateMaker.exe** below and keep it anywhere you like (for example on your Desktop), then double-click it. The first time, Windows may show a blue 'Windows protected your PC' box because the program isn't digitally signed: click 'More info', then 'Run anyway'. See the README for how to use it."
+          if gh release view "$TAG" > /dev/null 2>&1; then
+            gh release upload "$TAG" dist/FolderTemplateMaker.exe --clobber
+          else
+            gh release create "$TAG" dist/FolderTemplateMaker.exe \
+              --target "$GITHUB_SHA" \
+              --title "Folder Template Maker $VERSION" \
+              --notes "$NOTES"
+          fi
