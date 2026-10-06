@@ -356,11 +356,11 @@ class App(tk.Tk):
         self.result_var = tk.StringVar()
         self.result_label = ttk.Label(panel, textvariable=self.result_var, justify="left",
                                       font=self.bold)
-        self.result_label.grid(row=4, column=1, columnspan=2, sticky="w", padx=pad, pady=(self.px(8), 0))
-        panel.bind("<Configure>", lambda e: self.result_label.configure(
-            wraplength=max(self.px(240), e.width - self.px(200))), add="+")
+        self.result_label.grid(row=4, column=1, sticky="w", padx=pad, pady=(self.px(8), 0))
+        self.name_entry.bind("<Configure>", lambda e: self.result_label.configure(
+            wraplength=max(self.px(200), e.width)), add="+")
         self.open_button = ttk.Button(panel, text="Open folder", command=self.open_result)
-        self.open_button.grid(row=4, column=3, sticky="e", pady=(self.px(8), 0))
+        self.open_button.grid(row=4, column=2, columnspan=2, sticky="e", pady=(self.px(8), 0))
         self.open_button.grid_remove()
 
         self.dest_var.trace_add("write", lambda *_: self._on_destination_typed())

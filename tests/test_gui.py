@@ -598,7 +598,8 @@ class LayoutTests(GuiCase):
         self.assertLessEqual(height, self.app.winfo_screenheight())
 
     def test_after_creating_with_a_long_path_and_name(self):
-        long_dir = os.path.join(self.tmp.name, "A very long folder name " * 3, "and another one " * 2)
+        long_dir = os.path.join(self.tmp.name, ("A very long folder name " * 3).strip(),
+                                ("and another one " * 2).strip())     # no trailing spaces: Windows forbids them
         os.makedirs(long_dir)
         self.app.dest_var.set(long_dir)
         self.app.name_var.set("A rather long name for the new folder " * 2)
@@ -609,6 +610,10 @@ class LayoutTests(GuiCase):
         self.app.name_var.set("a/b")
         self.app._update_preview()
         self.assertClean(self.app, "error line")
+        self.app.result_var.set("Finished with problems. Created \"Xcom Diligence\" with 12 sub folders "
+                                "and 3 documents. (2 documents already existed and were left as they were.)")
+        self.app.open_button.grid()
+        self.assertClean(self.app, "long result line")
 
     def test_while_renaming_and_with_a_full_tree(self):
         for i in range(30):
