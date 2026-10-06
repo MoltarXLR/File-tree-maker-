@@ -101,6 +101,9 @@ class App(tk.Tk):
         self._load_template(first)
         self.deiconify()
         self.update_idletasks()
+        if self.current is not None:           # ready to type the new folder's name and press Enter
+            self.name_entry.focus_set()
+            self.name_entry.selection_range(0, "end")
         if self.store.warnings:
             self.after(300, lambda: self.error("Heads up", "\n\n".join(self.store.warnings)))
 
@@ -410,6 +413,7 @@ class App(tk.Tk):
 
     def _confirm_leave(self) -> bool:
         """Deal with unsaved changes before something replaces the template on screen."""
+        self.editor.commit_edit()              # a name that is still being typed counts as a change
         if not self.dirty:
             return True
         choice = self.ask_save_changes()

@@ -130,6 +130,11 @@ class StartupTests(GuiCase):
         self.assertEqual(app.title(), "Folder Template Maker")
         self.assertEqual(app.open_button.winfo_manager(), "")
 
+    def test_the_name_box_has_the_focus_ready_for_typing(self):
+        self.pump()
+        self.assertEqual(self.app.focus_get(), self.app.name_entry)
+        self.assertEqual(self.app.name_entry.selection_get(), "Diligence folder")
+
     def test_the_window_icon_loads(self):
         self.assertTrue(self.app.icon_loaded)
 
@@ -708,6 +713,16 @@ class TemplateManagementTests(GuiCase):
         app.new_template()
         self.assertEqual(app.current.name, "New template")
         self.assertEqual(str(app.create_button.cget("state")), "normal")
+
+    def test_a_name_still_being_typed_counts_as_an_unsaved_change(self):
+        self.editor.select(self.root)
+        self.editor.add_subfolder()
+        self.type_name("Half typed")
+        self.save_choice = "cancel"
+        self.app.on_close()                                  # asks, because of the pending name
+        self.assertTrue(self.app.winfo_exists())
+        self.assertEqual(self.names()[-1], "Half typed")     # it was applied, not thrown away
+        self.assertTrue(self.app.dirty)
 
     def test_closing_with_unsaved_changes_can_be_cancelled(self):
         self.app.tname_var.set("Edited")
