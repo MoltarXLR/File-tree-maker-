@@ -4,6 +4,10 @@ name: Windows screenshots (developer tool)
 # log (as base64) so the way it looks on Windows can be checked.  Run it by hand from the Actions tab.
 on:
   workflow_dispatch:
+  push:
+    paths:
+      - ".github/scripts/windows_screenshots.py"
+      - ".github/workflows/screenshots.yml"
 
 permissions:
   contents: read
