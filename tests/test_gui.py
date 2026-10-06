@@ -511,6 +511,69 @@ class StructureOperationTests(GuiCase):
                              "Deal Room index.txt")
 
 
+class DocumentDialogTests(GuiCase):
+    """The real pop-up (not the stand-in), used directly."""
+
+    def open(self, name="{title} raw data", ext=".txt", content="", apply=None):
+        from foldertemplatemaker.dialogs import DocumentDialog
+        applied = []
+        dialog = DocumentDialog(
+            self.app, title="Edit document", folder_name="Work product", name=name, ext=ext,
+            content=content, ok_text="Save",
+            preview=lambda n, e: n.replace("{title}", "Xcom Diligence") + e,
+            apply=apply or (lambda *args: applied.append(args)), modal=False)
+        self.addCleanup(lambda: dialog.winfo_exists() and dialog.destroy())
+        dialog.present()
+        self.pump()
+        dialog.applied = applied
+        return dialog
+
+    def test_live_preview_of_the_file_name(self):
+        dialog = self.open()
+        self.assertEqual(dialog.preview_var.get(), "Xcom Diligence raw data.txt")
+        dialog.name_var.set("{title} notes")
+        dialog.ext_var.set(".md")
+        self.assertEqual(dialog.preview_var.get(), "Xcom Diligence notes.md")
+        dialog.ext_var.set("(none)")
+        self.assertEqual(dialog.preview_var.get(), "Xcom Diligence notes")
+        self.assertEqual(dialog.extension(), "")
+        dialog.ext_var.set("csv")                                  # a missing dot is added
+        self.assertEqual(dialog.extension(), ".csv")
+
+    def test_placeholder_buttons_insert_where_you_were_typing(self):
+        dialog = self.open(name="", content="Hello ")
+        dialog.text.focus_force()
+        dialog.text.event_generate("<FocusIn>")
+        dialog._last_focus = dialog.text
+        dialog.text.mark_set("insert", "end-1c")
+        dialog.insert_placeholder("title")
+        self.assertEqual(dialog.text.get("1.0", "end-1c"), "Hello {title}")
+        dialog._last_focus = dialog.name_entry
+        dialog.insert_placeholder("folder")
+        self.assertEqual(dialog.name_var.get(), "{folder}")
+
+    def test_a_mistyped_placeholder_gets_a_heads_up_but_can_still_be_saved(self):
+        dialog = self.open()
+        self.assertEqual(dialog.hint_var.get(), "")
+        dialog.name_var.set("{titel} data")
+        self.assertIn("{titel}", dialog.hint_var.get())
+        dialog.text.insert("end", "and {yeer}")
+        dialog._refresh_hint()
+        self.assertIn("{yeer}", dialog.hint_var.get())
+        dialog.ok()
+        self.assertEqual(dialog.applied, [("{titel} data", ".txt", "and {yeer}")])
+        self.assertTrue(dialog.accepted)
+
+    def test_an_error_from_the_model_keeps_the_dialog_open(self):
+        dialog = self.open(apply=lambda *args: "That name is taken.")
+        dialog.ok()
+        self.assertEqual(dialog.error_var.get(), "That name is taken.")
+        self.assertFalse(dialog.accepted)
+        self.assertTrue(dialog.winfo_exists())
+        dialog.name_var.set("something else")                       # editing clears the old error
+        self.assertEqual(dialog.error_var.get(), "")
+
+
 class DragAndDropTests(GuiCase):
     def drag(self, source, target, where="into"):
         ed = self.editor

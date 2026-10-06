@@ -10,6 +10,7 @@ from .names import PLACEHOLDERS, unknown_placeholders
 
 ERROR_FG = "#b00020"
 HINT_FG = "#555555"
+WARN_FG = "#8a5a00"
 
 
 class ModalDialog(tk.Toplevel):
@@ -118,12 +119,15 @@ class DocumentDialog(ModalDialog):
             ttk.Label(legend, text=description, foreground=HINT_FG).grid(
                 row=index, column=1, sticky="w", padx=(10, 0))
 
+        self.hint_var = tk.StringVar()
+        ttk.Label(body, textvariable=self.hint_var, foreground=WARN_FG, wraplength=560,
+                  justify="left").grid(row=7, column=0, columnspan=4, sticky="w", pady=(8, 0))
         self.error_var = tk.StringVar()
         ttk.Label(body, textvariable=self.error_var, foreground=ERROR_FG, wraplength=560,
-                  justify="left").grid(row=7, column=0, columnspan=4, sticky="w", pady=(8, 0))
+                  justify="left").grid(row=8, column=0, columnspan=4, sticky="w", pady=(4, 0))
 
         buttons = ttk.Frame(body)
-        buttons.grid(row=8, column=0, columnspan=4, sticky="e", pady=(12, 0))
+        buttons.grid(row=9, column=0, columnspan=4, sticky="e", pady=(12, 0))
         self.ok_button = ttk.Button(buttons, text=ok_text, command=self.ok)
         self.ok_button.pack(side="left", padx=(0, 8))
         ttk.Button(buttons, text="Cancel", command=self.cancel).pack(side="left")
@@ -131,6 +135,7 @@ class DocumentDialog(ModalDialog):
         self._last_focus = self.name_entry
         self.name_entry.bind("<FocusIn>", lambda _e: setattr(self, "_last_focus", self.name_entry))
         self.text.bind("<FocusIn>", lambda _e: setattr(self, "_last_focus", self.text))
+        self.text.bind("<KeyRelease>", lambda _e: self._refresh_hint())
         self.name_var.trace_add("write", lambda *_: self._refresh_preview())
         self.ext_var.trace_add("write", lambda *_: self._refresh_preview())
         self._refresh_preview()
@@ -152,6 +157,13 @@ class DocumentDialog(ModalDialog):
         except Exception:
             self.preview_var.set("")
         self.error_var.set("")
+        self._refresh_hint()
+
+    def _refresh_hint(self) -> None:
+        odd = self.warnings()
+        self.hint_var.set(
+            "Heads up: %s isn't a placeholder, so it will be written exactly as typed." % odd
+            if odd else "")
 
     def insert_placeholder(self, key: str) -> None:
         target = self._last_focus
@@ -175,7 +187,7 @@ class DocumentDialog(ModalDialog):
 
     def warnings(self) -> str:
         """Placeholder-looking text that isn't a real placeholder (probably a typo)."""
-        odd = unknown_placeholders(self.name_var.get() + self.text.get("1.0", "end-1c"))
+        odd = unknown_placeholders(self.name_var.get() + "\n" + self.text.get("1.0", "end-1c"))
         return ", ".join(odd)
 
 

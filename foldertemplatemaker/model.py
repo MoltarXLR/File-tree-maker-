@@ -467,11 +467,6 @@ def template_from_dict(data: Any) -> Template:
     return template
 
 
-def structure_of(folder: Folder) -> Dict[str, Any]:
-    """Like ``folder_to_dict`` - handy for comparing two trees in tests."""
-    return folder_to_dict(folder)
-
-
 # --------------------------------------------------------------------------- #
 # Starter content
 # --------------------------------------------------------------------------- #

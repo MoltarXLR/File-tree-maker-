@@ -128,6 +128,15 @@ computer, **File > Import template file...**. (Advanced: set the environment var
 `FOLDER_TEMPLATE_MAKER_HOME` to a folder - for example one inside OneDrive - to keep the program's data
 there.)
 
+### If something goes wrong
+
+* **"The folder can't be created yet"** - the message says why (a name Windows doesn't allow, a destination
+  that doesn't exist, a path that would be too long...). Nothing has been created when you see it.
+* **The program closes or shows an "unexpected error"** - details are written to `error.log` in the folder
+  described above. Your templates are not affected.
+* **Uninstalling** - delete `FolderTemplateMaker.exe`. To also remove your saved templates, delete the
+  `%APPDATA%\FolderTemplateMaker` folder (export anything you want to keep first).
+
 ---
 
 ## For developers
